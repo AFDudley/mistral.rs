@@ -26,7 +26,7 @@ use crate::{
 pub mod config;
 mod inputs_processor;
 mod mmproj;
-mod text;
+pub(crate) mod text;
 pub(crate) use inputs_processor::Gemma3Processor;
 
 use super::siglip::SiglipVisionTransformer;

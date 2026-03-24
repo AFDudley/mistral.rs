@@ -20,9 +20,10 @@ use crate::{
         extract_logits,
         text_models_inputs_processor::{FlashParams, PagedAttentionInputMetadata},
         EitherCache, IsqModel, KvCache, NormalCache, NormalCacheType, NormalLoadingMetadata,
-        VisionModel,
+        NormalModel, VisionModel,
     },
     utils::{progress::NiceProgressBar, unvarbuilder::UnVarBuilder},
+    xlora_models::NonGranularState,
 };
 
 use super::config::Gemma3TextConfig;
@@ -840,6 +841,62 @@ impl IsqModel for TextModel {
             names.push(Some(format!("blk.{i}.ffn_down.weight")));
         }
         Ok(names)
+    }
+}
+
+impl NormalModel for TextModel {
+    fn forward(
+        &self,
+        input_ids: &Tensor,
+        seqlen_offsets: &[usize],
+        context_lens: Vec<(usize, usize)>,
+        _position_ids: Vec<usize>,
+        metadata: Option<(Vec<(Tensor, Tensor)>, &PagedAttentionInputMetadata)>,
+        flash_params: &FlashParams,
+    ) -> candle_core::Result<Tensor> {
+        let input_embeds = self.embed_tokens(input_ids)?;
+        self.forward_embeds(
+            input_ids,
+            input_embeds,
+            seqlen_offsets,
+            context_lens,
+            metadata,
+            flash_params,
+            false,
+        )
+    }
+    fn xlora_forward(
+        &self,
+        _input_ids: &Tensor,
+        _input_ids_full: &Tensor,
+        _seqlen_offsets: &[usize],
+        _seqlen_offsets_full: &[usize],
+        _no_kv_cache: bool,
+        _non_granular_state: &Option<NonGranularState>,
+        _context_lens: Vec<(usize, usize)>,
+        _position_ids: Vec<usize>,
+        _flash_params: &FlashParams,
+        _flash_params_full: &FlashParams,
+    ) -> candle_core::Result<Tensor> {
+        unimplemented!()
+    }
+    fn is_xlora(&self) -> bool {
+        false
+    }
+    fn device(&self) -> &Device {
+        &self.device
+    }
+    fn cache(&self) -> &EitherCache {
+        &self.cache
+    }
+    fn cache_mut(&mut self) -> &mut EitherCache {
+        &mut self.cache
+    }
+    fn max_seq_len(&self) -> usize {
+        self.max_seq_len
+    }
+    fn config(&self) -> &ModelConfigMetadata {
+        &self.cfg
     }
 }
 
